@@ -117,6 +117,12 @@ For comprehensive OpenShift administration training, see:
 
 ---
 
+## Credits
+
+This workshop content is based on the original [Windows Containers Quickstart](https://github.com/RedHatWorkshops/windows-containers-quickstart) by Red Hat Workshops, adapted for the modern Showroom framework with Antora.
+
+---
+
 ## Theme
 
 Uses RHDP Showroom theme v0.0.1 with modern Red Hat branding.
