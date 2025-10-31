@@ -1,0 +1,10 @@
+name: windows-containers
+title: Windows Containers on OpenShift
+version: main
+
+nav:
+- modules/ROOT/nav.adoc
+
+asciidoc:
+  attributes:
+    page-pagination: ''
