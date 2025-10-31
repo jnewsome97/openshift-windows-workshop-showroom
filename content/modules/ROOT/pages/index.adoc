@@ -1,0 +1,51 @@
+= Windows Containers
+
+Windows Container Support for OpenShift provides support for running
+Microsoft Windows Server containers on OpenShift Container Platform. For
+those that administer environments with a mix of Linux and Windows
+workloads, OpenShift allows you to deploy containerized Windows workloads
+running on Windows Server on the same platfrom as your containerized Linux workloads.
+
+Windows container workloads are supported for clusters running on the
+following providers:
+
+* Amazon Web Services (AWS)
+* Microsoft Azure
+* VMware vSphere
+* Bare Metal (via link:https://docs.openshift.com/container-platform/4.16/windows_containers/byoh-windows-instance.html[BYOH])
+
+NOTE: For more information  about what versions of Windows Server are supported, please see the link:https://docs.openshift.com/container-platform/4.16/windows_containers/understanding-windows-container-workloads.html[official documentation].
+
+In this lab, you'll get hands on experence on how to deploy a Windows
+worker node and how to deploy workloads onto an OpenShift platform with
+Windows and Linux nodes.
+
+== Windows MachineConfig Operator
+
+The Windows Machine Config Operator (WMCO) is the entry point for
+OpenShift Administrators who want to run containerized Windows workloads
+on their clusters.
+
+It allows Cluster Administrators to add a Windows worker nodes as a day 2
+operation with a prescribed configuration to an OpenShift cluster and
+enable scheduling of Windows workloads.
+
+The following diagram is a high level illustration on how the WMCO works.
+
+.Windows MachineConfig Operator Design
+image::windows-containers/wmcodiagram.png[wmco diagram]
+
+The Windows Machine Config Operator is a Linux-based operator that runs on
+Linux-based nodes on OpenShift. It watches for Machine Objects that are
+of type Windows and connects to them over SSH.
+
+During setup, the WMCO will:
+
+* Transfer needed binaries to the Windows node.
+* Installs and confiugres the Kubelet.
+* Install and run it's own overlay network (Hybrid-overlay network).
+* Confiugre the CNI on the Kubelet.
+* Set up kube-proxy.
+
+For more information please see the link:https://docs.openshift.com/container-platform/4.16/windows_containers/understanding-windows-container-workloads.html[official documentation].
+

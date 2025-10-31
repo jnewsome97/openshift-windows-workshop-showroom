@@ -1,0 +1,69 @@
+= Installing the WMCO
+
+Before you can deploy a Windows Node, you will need to install the Windows
+Machine Config Operator (WMCO). This can be done via the OpenShift Web
+Console. Use the "Console" tab, or open the console in another tab if it isn't open already.
+
+{{ MASTER_URL }}
+
+Use the `kubeadmin` username as the following password:
+
+[source,role="copypaste"]
+----
+{{ KUBEADMIN_PASSWORD }}
+----
+
+Once you are logged in, navigate to *Operators* ~> *OperatorHub* menu.
+
+.OperatorHub
+image::windows-containers/operatorhub-menu.png[OperatorHub Menu]
+
+Now type *Windows Machine Config Operator* in the *Filter by _keyword..._*
+box. Click on the *Windows Machine Config Operator* card, taking care that
+you don't use the community version.
+
+.WMCO Operator
+image::windows-containers/wmco-card.png[WMCO Install Card]
+
+On the overview page, select *Install*.
+
+.WMCO Operator Overview
+image::windows-containers/install-overview-updated-2025.png[WMCO Overview]
+
+On the *Install Operator* overview page, make sure you have *stable*
+selected in the "Update channel" section. Also, in the "Installation mode"
+section, leave *A specifc namespace on the cluster* selected. Leave the
+"Installed Namspace" section as *Operator recommended Namespace* and tick
+on *Enable Cluster Monitoring*. Finally, leave the "Approval strategy"
+as *Automatic*. Then click *Install*. Use the below graphic to guide you.
+
+.WMCO Install Operator Overview
+image::windows-containers/wmco-install-operator-overivew-page-updated-2025.png[WMCO Install Overview]
+
+The "Installing Operator" status page will come up.
+
+.WMCO Install Operator status page
+image::windows-containers/installing-the-wmco-status-operator-updated-2025.png[WMCO Installing]
+
+When the screen says "ready for use", the WMCO Operator is successfully installed.
+
+.WMCO Install Operator status page
+image::windows-containers/wmco-ready-for-use-updated-2025.png[WMCO Installing]
+
+Back on the cli, you should now see the WMCO pod running.
+
+[source,bash,role="execute"]
+----
+oc get pods -n openshift-windows-machine-config-operator
+----
+
+The output should look something like this.
+
+[source,bash]
+----
+NAME                                               READY   STATUS    RESTARTS   AGE
+windows-machine-config-operator-7ddc9f7d9b-vx4vx   1/1     Running   0          43m
+----
+
+Once the operator is up and running. You are ready to install a Windows Node.
+

@@ -1,0 +1,87 @@
+= Prerequisites
+
+This cluster has already been installed to support Windows Nodes and
+Windows Containers workloads. Therefore, we will be exploring the
+prerequisites by looking at the current configuration of this cluster.
+
+Before proceeding, make sure you're `kubeadmin`
+
+[source,bash,role="execute"]
+----
+oc login -u kubeadmin -p {{ KUBEADMIN_PASSWORD }}
+----
+
+The first requisite is that you must be running OpenShift version 4.6
+or newer. This cluster should have been installed at a supported version.
+
+[source,bash,role="execute"]
+----
+oc version
+----
+
+The next requisite is that the cluster must be installed with
+`OVNKubernetes` as the SDN for OpenShift. This can only be done at
+install time in the `install-config.yaml` file. This file is stored on
+the cluster after install. Take a look at the setting.
+
+[source,bash,role="execute"]
+----
+oc extract cm/cluster-config-v1 -n kube-system --to=- | yq e '.networking.networkType' -
+----
+
+This should output `OVNKubernetes` as the network type.
+
+NOTE: Learn more about the `install-config.yaml` file at the link:https://docs.openshift.com/container-platform/4.16/installing/installing_aws/installing-aws-customizations.html#installation-aws-config-yaml_installing-aws-customizations[official documentation page].
+
+The next requisite is the cluster must be set up with overlay hybrid
+networking. This is another step that can only be done at install
+time. You can verify that the configuration has been done by running
+the following:
+
+[source,bash,role="execute"]
+----
+oc get network.operator cluster -o yaml | yq e '.spec.defaultNetwork' -
+----
+
+The output should look like this. As you can see, the
+`hybridOverlayConfig` was set up. This is the overlay network setup on
+the Windows Node.
+
+[source,yaml]
+----
+ovnKubernetesConfig:
+  egressIPConfig: {}
+  gatewayConfig:
+    ipv4: {}
+    ipv6: {}
+    routingViaHost: false
+  genevePort: 6081
+  hybridOverlayConfig:
+    hybridClusterNetwork:
+      - cidr: 10.132.0.0/14
+        hostPrefix: 23
+  ipsecConfig:
+    mode: Disabled
+  mtu: 8901
+  policyAuditConfig:
+    destination: "null"
+    maxFileSize: 50
+    maxLogFiles: 5
+    rateLimit: 20
+    syslogFacility: local0
+type: OVNKubernetes
+----
+
+NOTE: To read more about how to setup HybridNetworking, please see the link:https://docs.openshift.com/container-platform/4.16/networking/ovn_kubernetes_network_provider/configuring-hybrid-networking.html#configuring-hybrid-ovnkubernetes_configuring-hybrid-networking[official doc].
+
+To summarize, in order to use Windows Containers on OpenShift. You will need the following:
+
+* OpenShift version 4.6 or newer.
+* `OVNKubernetes` as the SDN.
+* Additionally set up hybrid overlay networking.
+
+Note, that all of this is done at install time. There's, currently,
+no way to configure a cluster for Windows Containers post install.
+
+WARNING: If you're not seeing the above output, you will not be able to continue with this lab. If you see that this cluster doesn't meet the requirements, please see your workshop proctor.
+

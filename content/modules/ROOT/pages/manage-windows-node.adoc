@@ -1,0 +1,80 @@
+= Managing a Windows Node
+
+Now that the Windows Node is up and running, you will be able to manage
+it like you would a Linux node. You will be able to scale and delete
+nodes using the MachineAPI.
+
+WARNING: Windows Machine Config Operator is not responsible for Windows operating system updates. The Cluster Administrator provides the Windows image while creating the VMs and hence, the Cluster Administrator is responsible for providing an updated image. The Cluster Administrator can provide an updated image by changing the image in the MachineSet spec.
+
+Currently, you have one Windows node.
+
+[source,bash,role="execute"]
+----
+oc get nodes -l kubernetes.io/os=windows
+----
+
+In order to add another node, you will just scale the corespoinding
+MachineSet. Currently, you should have one
+
+[source,bash,role="execute"]
+----
+oc get machineset -l machine.openshift.io/os-id=Windows -n openshift-machine-api
+----
+
+You should have the below output. It shows that you have one Windows
+Machine managed by this MachineSet.
+
+[source,bash]
+----
+NAME                                       DESIRED   CURRENT   READY   AVAILABLE   AGE
+cluster1-zzv5j-windows-worker-us-east-1a   1         1         1       1           138m
+----
+
+To add another Windows Node, scale the Windows MachineSet to two
+replicas. This will create a new Windows Machine, and then the WMCO will
+add it as an OpenShift Node.
+
+[source,bash,role="execute"]
+----
+oc scale machineset -l machine.openshift.io/os-id=Windows -n openshift-machine-api --replicas=2
+----
+
+NOTE: Just like when you created the inital Windows Node, this can take upwards of 15 minutes. This can be another good time to take a small break.
+
+After some time, another Windows Node will have joined the cluster.
+
+[source,bash,role="execute"]
+----
+oc get nodes -l kubernetes.io/os=windows
+----
+
+Here's an example output.
+
+[source,bash]
+----
+NAME                                         STATUS   ROLES    AGE     VERSION
+ip-10-0-12-4.us-east-2.compute.internal     Ready    worker   23m    v1.29.6+aba1e8d
+ip-10-0-20-199.us-east-2.compute.internal   Ready    worker   2m5s   v1.29.6+aba1e8d
+----
+
+You can see how easy it is to manage a Windows Machine
+with the MachineAPI on OpenShift. It is managed by the
+same system as your Linux Nodes. You can even attach the Windows
+link:https://docs.openshift.com/container-platform/4.16/machine_management/applying-autoscaling.html[MachineSet Autoscaler] as well
+
+Remove this node by scaling the Windows MachineSet back down to 1.
+
+[source,bash,role="execute"]
+----
+oc scale machineset -l machine.openshift.io/os-id=Windows -n openshift-machine-api --replicas=1
+----
+
+WARNING: Please scale your Windows MachineSet to 1 before starting the next exercise.
+
+After some time, you should be back at 1 Windows node.
+
+[source,bash,role="execute"]
+----
+oc get nodes -l kubernetes.io/os=windows
+----
+

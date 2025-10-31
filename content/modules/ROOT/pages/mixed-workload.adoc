@@ -1,0 +1,201 @@
+= Running a Mixed Linux/Windows Container Workload
+
+With Windows Containers support for OpenShift; You also have the ability
+to run application stacks of mixed workloads. This gives you the
+ability to run an application stack consisting of both Linx and Windows
+Containers.
+
+In this section, we will show how you can run Windows workloads that
+work together with Linux workloads.
+
+You will be deploying a sample application stack that delivers an
+eCommerce site, The NetCandy Store. This application is built using
+Windows Containers working together with Linux Containers.
+
+image::windows-containers/mixed-windows-and-linux-workloads.png[netcandystore diagram]
+
+This application consists of:
+
+* Windows Container running a .NET v4 frontend, which is consuming a backend service.
+* Linux Container running a .NET Core backend service, which is using a database.
+* Linux Container running a MSSql database.
+
+We will be using a helm chart to deploy the sample application. In
+order to successfully deploy the application stack, make sure you're
+`kubeadmin`.
+
+NOTE: For more information about `helm` and how it can be used as a package manager for your containerized workloads, please see the link:https://docs.openshift.com/container-platform/4.16/applications/working_with_helm_charts/installing-helm.html[OpenShift documentation]
+
+Next add the Red Hat Developer Demos Helm repository.
+
+[source,bash,role="execute"]
+----
+helm repo add redhat-demos https://redhat-developer-demos.github.io/helm-repo
+helm repo update
+----
+
+Create the namespace for `netcandystore`.
+
+[source,bash,role="execute"]
+----
+oc create namespace netcandystore
+----
+
+Next we will use this command below to create a Kubernetes resource with specific security restrictions and context constraints within the OpenShift cluster.
+
+[source,bash,role="execute"]
+----
+oc create -f ${HOME}/support/restrictedfsgroupscc.yaml
+----
+
+Next, we'll allow a specific group of service accounts (in this case, those related to Microsoft SQL Server) to follow the strict security rules defined by the "restrictedfsgroup" Security Context Constraints in the OpenShift system.
+
+[source,bash,role="execute"]
+----
+oc adm policy add-scc-to-group restrictedfsgroup system:serviceaccounts:mssql
+----
+
+With the two variables exported, and the helm repo added, you can install
+the application stack using the `helm` cli.
+
+[source,bash,role="execute"]
+----
+helm install ncs --namespace netcandystore \
+--timeout=1200s \
+redhat-demos/netcandystore
+----
+
+NOTE: Note that the `--timeout=1200s` is needed because the default timeout for `helm` is 5 minutes and, in most cases, the Windows container image will take longer than that to download.
+
+This will look like it's "hanging" or "stuck". It's not! What's happening
+is that the image is getting pulled into the Windows node. As stated
+before, Windows containers can be very large, so it might take some time.
+
+After some time, you should see something like the following return.
+
+[source,bash]
+----
+NAME: ncs
+LAST DEPLOYED: Sun Mar 28 00:16:05 2021
+NAMESPACE: netcandystore
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+1. Get the application URL by running these commands:
+oc get route netcandystore -n netcandystore -o jsonpath='{.spec.host}{"\n"}'
+
+2. NOTE: The Windows container deployed only supports the following OS:
+
+Windows Version:
+=============
+Windows Server 2019 Release 1809
+
+Build Version:
+=============
+
+Major  Minor  Build  Revision
+-----  -----  -----  --------
+10     0      17763  0
+----
+
+
+If the helm installation finishes quickly, please examine the pods. It might be necessary to wait for approximately 10-20 minutes for this specific pod to become operational.
+
+Verify that the helm chart was installed successfully.
+
+[source,bash,role="execute"]
+----
+helm ls -n netcandystore
+----
+
+The output should look something like this.
+
+[source,bash]
+----
+NAME    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
+ncs     netcandystore   1               2021-03-31 19:54:50.576808462 +0000 UTC deployed        netcandystore-1.0.1     3.1
+----
+
+There should be 3 pods running for this application. One for the frondend
+called netcandystore, one for the categories service called getcategories
+and a DB called mysql.
+
+[source,bash,role="execute"]
+----
+oc get pods -n netcandystore
+----
+
+If the NetCandyStore Pod looks kinda like this, please wait for a little longer:
+
+----
+netcandystore-78d78677c8-j7k62        0/1     ContainerCreating   0          104s
+----
+
+You can easily look into more details about what's happening with your pod by using the oc describe command. Just replace the pod name with your own.
+
+[source,bash,role="execute"]
+----
+oc describe pod <netcandystore-78d78677c8-j7k62> -n netcandystore
+----
+
+You'll be able to tell it's done when the events start looking like this:
+
+----
+Events:
+  Type    Reason     Age    From               Message
+  ----    ------     ----   ----               -------
+  Normal  Scheduled  13m    default-scheduler  Successfully assigned netcandystore/netcandystore-78d78677c8-j7k62
+to ip-10-0-130-99.us-east-2.compute.internal
+  Normal  Pulling    13m    kubelet            Pulling image "quay.io/donschenck/netcandystore:2021mar8.1"
+  Normal  Pulled     4m48s  kubelet            Successfully pulled image "quay.io/donschenck/netcandystore:2021mar
+8.1" in 8m41.7951457s (8m41.7951457s including waiting)
+  Normal  Created    4m48s  kubelet            Created container netcandystore
+  Normal  Started    4m46s  kubelet            Started container netcandystore
+----
+
+Looking at the frontend application, you can list where the pod is
+running. Comparing it to the nodes output, you can see it's running on
+a Windows Node.
+
+[source,bash,role="execute"]
+----
+oc get pods -n netcandystore -l app=netcandystore -o wide
+oc get nodes -l kubernetes.io/os=windows
+----
+
+Now, looking at the backend, you can see it's running on a Linux node.
+
+[source,bash,role="execute"]
+----
+oc get pods -n netcandystore -l app=getcategories -o wide
+oc get nodes -l kubernetes.io/os=linux
+----
+
+The MSSQL Database is also running on the Linux node.
+
+[source,bash,role="execute"]
+----
+oc get pods -n netcandystore -l deploymentconfig=mssql -o wide
+----
+
+You can see the application by visiting the link:http://netcandystore-netcandystore.{{ ROUTE_SUBDOMAIN }}[Net Candystore Route]. If you get a message saying 'Application is not available'. Please give it some time and try again later. Make sure it is http:// and not https://
+
+The frontpage should look like this, feel free to play around with the application!
+
+image::windows-containers/ncs.png[netcandy store page]
+
+== Conclusion
+
+In this lab you worked with Windows Containers on OpenShift Container
+Platfrom. You saw how the cluster was prepared to support Windows
+Containers. You also learned about the Windows Machine Config Operator and
+how it's used to provision a Windows Node.
+
+You also learned about how to manage Windows Nodes using the MachineAPi
+and how to manage Windows Container workloads using the same tools as
+Linux Nodes.
+
+Finally, you learned how you can used mixed workloads made up of Linux
+and Windows containers.
+

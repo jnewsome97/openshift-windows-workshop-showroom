@@ -1,2 +1,9 @@
 // Windows Containers on OpenShift
-* xref:windows-containers.adoc[Windows Containers]
+* xref:index.adoc[Introduction]
+* xref:prerequisites.adoc[Prerequisites]
+* xref:install-wmco.adoc[Installing the WMCO]
+* xref:install-windows-node.adoc[Installing a Windows Node]
+* xref:manage-windows-node.adoc[Managing a Windows Node]
+* xref:explore-windows-node.adoc[Exploring The Windows Node]
+* xref:windows-workload.adoc[Running a Windows Container Workload]
+* xref:mixed-workload.adoc[Running a Mixed Linux/Windows Container Workload]

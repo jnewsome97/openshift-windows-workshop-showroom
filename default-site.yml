@@ -1,7 +1,7 @@
 site:
   title: Windows Containers on OpenShift
   url: http://localhost:8080
-  start_page: windows-containers::windows-containers.adoc
+  start_page: windows-containers::index.adoc
 
 content:
   sources:

@@ -1,0 +1,222 @@
+= Running a Windows Container Workload
+
+Before you deploy a sample Windows Container workload, let's explore
+how the container gets scheduled on the Windows node.
+
+If you run an `oc describe` on the Windows Node, you'll see it has
+a taint.
+
+NOTE: Taints and tolerations work together to ensure pods are scheduled onto appropriate nodes. A taint on a node repels pods that don't have a matching toleration.
+
+[source,bash,role="execute"]
+----
+oc describe nodes -l kubernetes.io/os=windows | grep Taint
+----
+
+You should see the following output.
+
+[source,bash]
+----
+Taints:             os=Windows:NoSchedule
+----
+
+Every Windows Node will come with this taint by default. This taint will
+"repel" all workloads that don't tolerate this taint. It is a part of
+the WMCO's job to ensure that all Windows Nodes have this taint.
+
+In this lab, there is a sample workload saved under
+`~/support/winc-sample-workload.yaml`. Let's explore this file a bit
+before we apply it.
+
+[source,bash,role="execute"]
+----
+yq e '.items[2].spec.template.spec.tolerations' ~/support/winc-sample-workload.yaml
+----
+
+The output should look something like this.
+
+[source,yaml]
+----
+- key: "os"
+  value: "Windows"
+  Effect: "NoSchedule"
+----
+
+This sample workload has the toleration in place to be able to run on
+the Windows Node. However, that's not enough. A `nodeSelector` will need
+to be present as well.
+
+[source,bash,role="execute"]
+----
+yq e '.items[2].spec.template.spec.nodeSelector' ~/support/winc-sample-workload.yaml
+----
+
+The output should look something like this.
+
+[source,bash]
+----
+kubernetes.io/os: windows
+----
+
+So here, the `nodeSelector` will place this container on the Windows
+Node. Furthermore, the appropriate toleration is in place so the Windows
+Node won't repel the container.
+
+One last thing to look at. Take a look at the container that is being deployed.
+
+[source,bash,role="execute"]
+----
+yq e '.items[2].spec.template.spec.containers[0].image' ~/support/winc-sample-workload.yaml
+----
+
+WARNING: Note that this container has to be prepulled onto the Windows Node. Please see the <<Exploring The Windows Node>> exercise for more info.
+
+Apply this YAML file to deploy the sample workload.
+
+[source,bash,role="execute"]
+----
+oc apply -f ~/support/winc-sample-workload.yaml
+----
+
+Wait for the deployment to finish rolling out. This can take 5-10 minutes as Windows images are large in size.
+
+[source,bash,role="execute"]
+----
+oc rollout status deploy/win-webserver -n winc-sample
+----
+
+If you check the pod, you can see that it's running on the Windows
+Node. Look at the wide output of the Pod and select the Windows Node
+to verify.
+
+[source,bash,role="execute"]
+----
+oc get pods -n winc-sample  -o wide
+oc get nodes -l kubernetes.io/os=windows
+----
+
+Make a note of the Windows Node name, we will log into the node using
+the bastion ssh container.
+
+[source,bash,role="execute"]
+----
+oc exec -it deploy/winc-ssh -n openshift-windows-machine-config-operator -- bash
+----
+
+Now log into the Windows Node using the hostname. Example:
+
+[source,bash]
+----
+bash-4.4$ sshcmd.sh ip-10-0-20-199.us-east-2.compute.internal
+----
+
+To view Windows containers running on the node, you need to install the `crictl` tool
+to interact with the containerd runtime.
+
+[source,bash,role="execute"]
+----
+$ProgressPreference = "SilentlyContinue"; wget https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.27.0/crictl-v1.27.0-windows-amd64.tar.gz -o crictl-v1.27.0-windows-amd64.tar.gz; tar -xvf crictl-v1.27.0-windows-amd64.tar.gz -C C:\Windows\
+----
+
+Now lets configure `crictl`.
+[source,bash,role="execute"]
+----
+crictl config --set runtime-endpoint="npipe:\\\\.\\pipe\\containerd-containerd"
+----
+
+Here, you can see the Windows container running on the node.
+
+[source,bash,role="execute"]
+----
+crictl ps
+----
+
+Here you'll see the Container running. Here is an example output.
+
+[source,bash]
+----
+CONTAINER           IMAGE               CREATED             STATE               NAME                ATTEMPT             POD ID              POD
+c06eb847b6313       b51a50ce03f12       2 minutes ago       Running             windowswebserver    0                   6a295ed1a5a8d       win-webserver-776bb9fb97-zxf78
+----
+
+You can also see the images downloaded on the host.
+
+[source,bash,role="execute"]
+----
+crictl images
+----
+
+You should see the following output.
+
+[source,bash]
+----
+IMAGE                                    TAG                 IMAGE ID            SIZE
+mcr.microsoft.com/oss/kubernetes/pause   3.9                 6778bc79db242       270MB
+mcr.microsoft.com/windows/servercore     ltsc2019            b51a50ce03f12       2.18GB
+----
+
+Go ahead an logout of the Windows Node
+
+[source,bash,role="execute"]
+----
+exit
+----
+
+You can also exit out of the bash container session as well.
+
+[source,bash,role="execute"]
+----
+exit
+----
+
+You can interact with the Windows Container workload as you would any
+other pod. For instance you can remote shell into the container itself
+by calling the `Powershell` command.
+
+[source,bash,role="execute"]
+----
+oc -n winc-sample exec -it $(oc get pods -l app=win-webserver -n winc-sample -o name ) -- powershell
+----
+
+This should put you in a `Powershell` session in the Windows Container. It
+should look something like this
+
+[source,bash]
+----
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+PS C:\>
+----
+
+Here, you can query for the running HTTP process.
+
+NOTE: You may have to press `ENTER` to execute the following commands while in the Windows Container for them to run.
+
+[source,bash,role="execute"]
+----
+Get-WmiObject Win32_Process -Filter "name = 'powershell.exe'" | Select-Object CommandLine | Select-String -Pattern http
+----
+
+Go ahead an logout of the Windows Container.
+
+[source,bash,role="execute"]
+----
+exit
+----
+
+You can interact with the Windows Container `Deployment` the same as you
+would for a Linux one. Scale the `Deployment` of the Windows Container:
+
+[source,bash,role="execute"]
+----
+oc scale deploy/win-webserver -n winc-sample --replicas=2
+----
+
+You should now have two Pods running.
+
+[source,bash,role="execute"]
+----
+oc get pods -n winc-sample
+----
+
